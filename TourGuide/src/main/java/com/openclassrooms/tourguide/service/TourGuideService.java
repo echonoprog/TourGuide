@@ -7,14 +7,7 @@ import com.openclassrooms.tourguide.user.UserReward;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -96,12 +89,17 @@ public class TourGuideService {
 	}
 
 	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
+		HashMap<Attraction, Double> attractionToDistance = new HashMap<>();
+		gpsUtil.getAttractions().forEach((attraction) -> {
+			double distance = rewardsService.getDistance(attraction, visitedLocation.location);
+			attractionToDistance.put(attraction, distance);
+		});
+
 		List<Attraction> nearbyAttractions = new ArrayList<>();
-		for (Attraction attraction : gpsUtil.getAttractions()) {
-			if (rewardsService.isWithinAttractionProximity(attraction, visitedLocation.location)) {
-				nearbyAttractions.add(attraction);
-			}
-		}
+		attractionToDistance.entrySet().stream()
+				.sorted(Map.Entry.comparingByValue())
+				.limit(5) // Limiter à 5 attractions
+				.forEach(entry -> nearbyAttractions.add(entry.getKey()));
 
 		return nearbyAttractions;
 	}
