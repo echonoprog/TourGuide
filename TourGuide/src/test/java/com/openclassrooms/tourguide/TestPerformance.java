@@ -63,6 +63,8 @@ public class TestPerformance {
 		for (User user : allUsers) {
 			tourGuideService.trackUserLocation(user);
 		}
+
+
 		stopWatch.stop();
 		tourGuideService.tracker.stopTracking();
 
@@ -78,7 +80,7 @@ public class TestPerformance {
 
 		// Users should be incremented up to 100,000, and test finishes within 20
 		// minutes
-		InternalTestHelper.setInternalUserNumber(100);
+		InternalTestHelper.setInternalUserNumber(10000);
 		StopWatch stopWatch = new StopWatch();
 		stopWatch.start();
 		TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
@@ -91,8 +93,20 @@ public class TestPerformance {
 		allUsers.forEach(u -> rewardsService.calculateRewards(u));
 
 		for (User user : allUsers) {
+			while (user.getUserRewards().isEmpty()) {
+				try {
+					TimeUnit.MILLISECONDS.sleep(200);
+				} catch (InterruptedException e) {
+
+				}
+			}
+		}
+
+		for (User user : allUsers) {
 			assertTrue(user.getUserRewards().size() > 0);
 		}
+
+
 		stopWatch.stop();
 		tourGuideService.tracker.stopTracking();
 

@@ -2,7 +2,10 @@ package com.openclassrooms.tourguide.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import org.springframework.stereotype.Service;
 
@@ -24,6 +27,9 @@ public class RewardsService {
 	private int attractionProximityRange = 200;
 	private final GpsUtil gpsUtil;
 	private final RewardCentral rewardsCentral;
+
+	private final Executor rewardExecutor = Executors.newFixedThreadPool(1000);
+
 	
 	public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
 		this.gpsUtil = gpsUtil;
@@ -41,23 +47,25 @@ public class RewardsService {
 		proximityBuffer = defaultProximityBuffer;
 	}
 
-	public void calculateRewards(User user) {
-		List<VisitedLocation> userLocations = new ArrayList<>(user.getVisitedLocations());
-		List<Attraction> attractions = gpsUtil.getAttractions();
-		CopyOnWriteArrayList<UserReward> userRewards = new CopyOnWriteArrayList<>(user.getUserRewards());
+	public CompletableFuture<Void> calculateRewards(User user) {
+		return CompletableFuture.runAsync(() -> {
+			List<VisitedLocation> userLocations = new ArrayList<>(user.getVisitedLocations());
+			List<Attraction> attractions = gpsUtil.getAttractions();
+			CopyOnWriteArrayList<UserReward> userRewards = new CopyOnWriteArrayList<>(user.getUserRewards());
 
-		for (VisitedLocation visitedLocation : userLocations) {
-			for (Attraction attraction : attractions) {
-				boolean alreadyRewarded = userRewards.stream()
-						.anyMatch(r -> r.attraction.attractionName.equals(attraction.attractionName));
+			for (VisitedLocation visitedLocation : userLocations) {
+				for (Attraction attraction : attractions) {
+					boolean alreadyRewarded = userRewards.stream()
+							.anyMatch(r -> r.attraction.attractionName.equals(attraction.attractionName));
 
-				if (!alreadyRewarded && nearAttraction(visitedLocation, attraction)) {
-					UserReward newUserReward = new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user));
-					userRewards.add(newUserReward);
-					user.setUserRewards(userRewards);
+					if (!alreadyRewarded && nearAttraction(visitedLocation, attraction)) {
+						UserReward newUserReward = new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user));
+						userRewards.add(newUserReward);
+					}
 				}
 			}
-		}
+			user.setUserRewards(userRewards);
+		}, rewardExecutor);
 	}
 
 
